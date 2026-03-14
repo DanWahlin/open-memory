@@ -1,0 +1,29 @@
+{
+  "name": "open-memory",
+  "version": "0.1.0",
+  "description": "MCP server for personal knowledge/memory. Any AI tool queries one shared brain.",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "open-memory": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/server.js",
+    "start:stdio": "node dist/stdio.js"
+  },
+  "keywords": ["mcp", "memory", "knowledge", "ai", "qmd"],
+  "author": "Dan Wahlin",
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "dotenv": "^17.3.1",
+    "hono": "^4.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
+  }
+}
