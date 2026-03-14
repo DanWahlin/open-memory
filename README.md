@@ -4,16 +4,20 @@ One brain, every AI. An MCP server that gives any AI tool (Copilot, Claude, Code
 
 Your memory lives as plain markdown files. [QMD](https://github.com/nicobailon/qmd) indexes and searches them (BM25 + vector embeddings). open-memory wraps it all in an MCP server that any client can connect to. No database. No SaaS. Files are the source of truth.
 
+```mermaid
+graph LR
+    Copilot -->|MCP| OM[open-memory<br/>stdio or SSE]
+    Claude_Code[Claude Code] -->|MCP| OM
+    Cursor -->|MCP| OM
+    Codex -->|MCP| OM
+    ChatGPT -->|MCP| OM
+    OM -->|QMD| FS[memory/*.md<br/>MEMORY.md<br/>notes/*.md]
+
+    style OM fill:#2d333b,stroke:#539bf5,color:#adbac7
+    style FS fill:#2d333b,stroke:#57ab5a,color:#adbac7
 ```
-                        ┌──────────────────┐
-Copilot      ──┐        │  open-memory     │         ┌──────────────┐
-Claude Code ──┼── MCP ──→  (stdio or SSE)  ├── QMD ──→ memory/*.md  │
-Cursor       ──┤        │                 │         │ MEMORY.md    │
-Codex        ──┤        └──────────────────┘         │ notes/*.md   │
-ChatGPT      ──┘                                      └──────────────┘
-               local (stdio)
-               or remote (SSE over Tailscale/tunnel)
-```
+
+> Transport: local (stdio) or remote (SSE over Tailscale/tunnel)
 
 ## Why
 
@@ -303,29 +307,32 @@ qmd query "why did we choose Postgres over MongoDB"
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ MCP Client (Copilot, Claude, Cursor, Codex...)          │
-└───────────────┬─────────────────────────────────────────┘
-                │ MCP Protocol (stdio or SSE)
-┌───────────────▼─────────────────────────────────────────┐
-│ open-memory server                                       │
-│                                                          │
-│  search_memory ──→ QMD (vsearch/search/query)           │
-│  read_memory   ──→ fs.readFileSync                      │
-│  write_memory  ──→ fs.appendFileSync                    │
-│  get_document  ──→ QMD (get)                            │
-│  list_memories ──→ fs.readdirSync                       │
-│  browse_recent ──→ fs.readdirSync + readFileSync        │
-│  memory_status ──→ QMD (status)                         │
-└─────────────────────────────────────────────────────────┘
-                │
-┌───────────────▼─────────────────────────────────────────┐
-│ File System                                              │
-│  MEMORY.md          - curated long-term knowledge        │
-│  memory/YYYY-MM-DD.md - daily notes                      │
-│  *.md               - any other indexed markdown         │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    Client[MCP Client<br/>Copilot · Claude · Cursor · Codex]
+    Client -->|MCP Protocol<br/>stdio or SSE| Server
+
+    subgraph Server[open-memory server]
+        search_memory -->|vsearch / search / query| QMD
+        read_memory --> FS_read[fs.readFileSync]
+        write_memory --> FS_append[fs.appendFileSync]
+        get_document -->|get| QMD
+        list_memories --> FS_readdir[fs.readdirSync]
+        browse_recent --> FS_readdir
+        memory_status -->|status| QMD
+    end
+
+    Server --> FileSystem
+
+    subgraph FileSystem[File System]
+        MEMORY[MEMORY.md<br/>curated long-term knowledge]
+        Daily[memory/YYYY-MM-DD.md<br/>daily notes]
+        Other[*.md<br/>any indexed markdown]
+    end
+
+    style Client fill:#2d333b,stroke:#539bf5,color:#adbac7
+    style Server fill:#1c2128,stroke:#539bf5,color:#adbac7
+    style FileSystem fill:#1c2128,stroke:#57ab5a,color:#adbac7
 ```
 
 **Key design decisions:**
