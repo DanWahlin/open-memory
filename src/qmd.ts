@@ -21,9 +21,8 @@ function runQmd(args: string[]): Promise<string> {
 }
 
 export async function search(query: string, mode: 'search' | 'vsearch' | 'query' = 'vsearch', limit = 10, minScore = 0): Promise<SearchResult[]> {
-  // 'query' (hybrid) mode requires node-llama-cpp for reranking, which may not be available.
-  // Fall back to vsearch if hybrid is requested but likely to fail.
-  if (mode === 'query') mode = 'vsearch';
+  // 'query' (hybrid) mode uses a local LLM for reranking — works but slow on CPU (~150s).
+  // Consider using 'vsearch' for faster results when hybrid isn't needed.
   const args = [mode, query, '-n', String(limit), '--json'];
   if (minScore > 0) args.push('--min-score', String(minScore));
   if (CONFIG.collection) args.push('-c', CONFIG.collection);
