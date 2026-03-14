@@ -1,15 +1,15 @@
 # open-memory
 
-One brain, every AI. An MCP server that gives any AI tool (Claude, Copilot, Codex, Cursor, ChatGPT) access to your personal knowledge base through a single open protocol.
+One brain, every AI. An MCP server that gives any AI tool (Copilot, Claude, Codex, Cursor, ChatGPT) access to your personal knowledge base through a single open protocol.
 
 Your memory lives as plain markdown files. [QMD](https://github.com/nicobailon/qmd) indexes and searches them (BM25 + vector embeddings). open-memory wraps it all in an MCP server that any client can connect to. No database. No SaaS. Files are the source of truth.
 
 ```
                         ┌──────────────────┐
-Claude Code ──┐         │  open-memory     │         ┌──────────────┐
-Cursor       ──┼── MCP ─→  (stdio or SSE)  ├── QMD ──→ memory/*.md  │
-Copilot      ──┤         │                 │         │ MEMORY.md    │
-Codex        ──┤         └──────────────────┘         │ notes/*.md   │
+Copilot      ──┐        │  open-memory     │         ┌──────────────┐
+Claude Code ──┼── MCP ──→  (stdio or SSE)  ├── QMD ──→ memory/*.md  │
+Cursor       ──┤        │                 │         │ MEMORY.md    │
+Codex        ──┤        └──────────────────┘         │ notes/*.md   │
 ChatGPT      ──┘                                      └──────────────┘
                local (stdio)
                or remote (SSE over Tailscale/tunnel)
@@ -17,7 +17,7 @@ ChatGPT      ──┘                                      └─────�
 
 ## Why
 
-Every AI tool has its own memory silo. Claude doesn't know what you told Copilot. Cursor doesn't remember what Codex learned. You re-explain context every time you switch tools.
+Every AI tool has its own memory silo. Copilot doesn't know what you told Claude. Cursor doesn't remember what Codex learned. You re-explain context every time you switch tools.
 
 open-memory fixes this: one directory of markdown files, one search index, one MCP server. Any tool that speaks MCP gets your full context.
 
@@ -89,6 +89,49 @@ npm run start:stdio
 
 ## Connecting AI Tools
 
+### GitHub Copilot CLI
+
+The fastest way to connect. Run `copilot` in your terminal, then:
+
+```
+/mcp add
+```
+
+Fill in the interactive form:
+
+| Field | Value |
+|-------|-------|
+| **Server Name** | `open-memory` |
+| **Server Type** | `STDIO` (press the corresponding number) |
+| **Command** | `node /path/to/open-memory/dist/stdio.js` |
+| **Environment Variables** | `{"QMD_BIN": "/path/to/qmd", "MEMORY_DIR": "/path/to/your/memory"}` |
+| **Tools** | `*` |
+
+Press `Ctrl+S` to save. The server is available immediately, no restart needed.
+
+You can also edit the config file directly at `~/.copilot/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "open-memory": {
+      "type": "local",
+      "command": "node",
+      "args": ["/path/to/open-memory/dist/stdio.js"],
+      "env": {
+        "QMD_BIN": "/path/to/qmd",
+        "MEMORY_DIR": "/path/to/your/memory"
+      },
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Manage your server with `/mcp show`, `/mcp edit open-memory`, or `/mcp delete open-memory`.
+
+For remote access (SSE), use type `"http"` or `"sse"` with your server URL instead.
+
 ### Claude Code
 
 ```bash
@@ -112,13 +155,46 @@ Or add to your MCP config:
 }
 ```
 
-### Cursor / Copilot / Any MCP Client (local)
+### Cursor
 
-Same stdio config as Claude Code. Add to your editor's MCP settings:
+Add to your Cursor MCP settings (Settings > MCP Servers):
 
 ```json
 {
   "mcpServers": {
+    "open-memory": {
+      "command": "node",
+      "args": ["/path/to/open-memory/dist/stdio.js"],
+      "env": {
+        "QMD_BIN": "/path/to/qmd",
+        "MEMORY_DIR": "/path/to/your/memory"
+      }
+    }
+  }
+}
+```
+
+### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.open-memory]
+command = 'node'
+args = ['/path/to/open-memory/dist/stdio.js']
+
+[mcp_servers.open-memory.env]
+QMD_BIN = '/path/to/qmd'
+MEMORY_DIR = '/path/to/your/memory'
+```
+
+### VS Code (Copilot Chat)
+
+Add to `.vscode/mcp.json` in your workspace (or `~/.vscode/mcp.json` globally):
+
+```json
+{
+  "servers": {
     "open-memory": {
       "command": "node",
       "args": ["/path/to/open-memory/dist/stdio.js"],
@@ -139,31 +215,16 @@ Run the HTTP server on a machine with your memory files:
 OPEN_MEMORY_TOKEN=your-secret-token npm start
 ```
 
-Connect from any MCP client that supports SSE:
+Connect from any MCP client that supports SSE or HTTP transport:
 
 ```
 URL: http://<your-server>:3838/sse
 Auth: Bearer your-secret-token
 ```
 
+For GitHub Copilot CLI remote access, use `/mcp add` with type `HTTP` or `SSE` and paste the URL.
+
 Over Tailscale, use your Tailscale IP. Over the internet, put it behind a reverse proxy with HTTPS.
-
-### Codex CLI
-
-```json
-{
-  "mcpServers": {
-    "open-memory": {
-      "command": "node",
-      "args": ["/path/to/open-memory/dist/stdio.js"],
-      "env": {
-        "QMD_BIN": "/path/to/qmd",
-        "MEMORY_DIR": "/path/to/your/memory"
-      }
-    }
-  }
-}
-```
 
 ## Tools
 
@@ -236,7 +297,7 @@ qmd search "project decisions"
 # Semantic search (finds conceptually related content)
 qmd vsearch "what did we decide about the architecture"
 
-# Hybrid (best quality, combines both + reranking)
+# Hybrid (best quality, combines both + reranking via local LLM)
 qmd query "why did we choose Postgres over MongoDB"
 ```
 
@@ -244,7 +305,7 @@ qmd query "why did we choose Postgres over MongoDB"
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ MCP Client (Claude, Cursor, Copilot, Codex...)          │
+│ MCP Client (Copilot, Claude, Cursor, Codex...)          │
 └───────────────┬─────────────────────────────────────────┘
                 │ MCP Protocol (stdio or SSE)
 ┌───────────────▼─────────────────────────────────────────┐
