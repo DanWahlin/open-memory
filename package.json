@@ -11,7 +11,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/server.js",
-    "start:stdio": "node dist/stdio.js"
+    "start:stdio": "node dist/stdio.js",
+    "test": "npm run build && node --test --test-concurrency=1 dist/*.test.js"
   },
   "keywords": ["mcp", "memory", "knowledge", "ai", "qmd"],
   "author": "Dan Wahlin",

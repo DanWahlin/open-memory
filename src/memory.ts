@@ -2,6 +2,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CONFIG } from './config.js';
 
+function resolveMemoryPath(file: string): string {
+  if (path.isAbsolute(file)) {
+    throw new Error('Memory file path must be relative to the memory directory; absolute paths are not allowed.');
+  }
+
+  const memoryRoot = path.resolve(CONFIG.memoryDir);
+  const target = path.resolve(memoryRoot, file);
+  const relative = path.relative(memoryRoot, target);
+
+  if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Memory file path resolves outside memory directory; path traversal is not allowed.');
+  }
+
+  return target;
+}
+
 function dailyNotePath(date?: string): string {
   const d = date || new Date().toISOString().slice(0, 10);
   return path.join(CONFIG.memoryDir, CONFIG.dailyNotesDir, `${d}.md`);
@@ -17,7 +33,7 @@ function ensureDir(filePath: string): void {
 /** Append content to today's daily note (or a specific file). */
 export function writeMemory(content: string, file?: string): string {
   const target = file
-    ? path.resolve(CONFIG.memoryDir, file)
+    ? resolveMemoryPath(file)
     : dailyNotePath();
 
   ensureDir(target);
@@ -39,7 +55,7 @@ export function writeMemory(content: string, file?: string): string {
 
 /** Read a memory file by path (relative to memoryDir). */
 export function readMemory(file: string): string {
-  const target = path.resolve(CONFIG.memoryDir, file);
+  const target = resolveMemoryPath(file);
   if (!fs.existsSync(target)) {
     throw new Error(`File not found: ${file}`);
   }
@@ -49,7 +65,7 @@ export function readMemory(file: string): string {
 /** List memory files matching a pattern. */
 export function listMemories(subdir?: string): string[] {
   const dir = subdir
-    ? path.resolve(CONFIG.memoryDir, subdir)
+    ? resolveMemoryPath(subdir)
     : path.resolve(CONFIG.memoryDir, CONFIG.dailyNotesDir);
 
   if (!fs.existsSync(dir)) return [];

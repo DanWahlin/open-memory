@@ -9,7 +9,7 @@ export const CONFIG = {
   qmdBin: process.env.QMD_BIN || 'qmd',
 
   // Memory directory (where MEMORY.md + memory/*.md live)
-  memoryDir: process.env.MEMORY_DIR || path.join(os.homedir(), '.openclaw'),
+  memoryDir: process.env.MEMORY_DIR || path.join(os.homedir(), '.open-memory'),
 
   // Daily notes subdirectory within memoryDir
   dailyNotesDir: process.env.DAILY_NOTES_DIR || 'memory',
